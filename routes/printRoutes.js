@@ -69,7 +69,7 @@ router.post('/upload', protect, upload.single('pdf'), async (req, res) => {
 
 
         const copies = parseInt(req.body.copies) || 1;
-        const pricePerPage = 5;
+        const pricePerPage = 1;
         const totalCost = pages * copies * pricePerPage;
 
 
