@@ -1,0 +1,92 @@
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const { protect } = require('../middleware/authMiddleware');
+const PrintRequest = require('../models/PrintRequest');
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Configure Multer
+const storage = multer.diskStorage({});
+const upload = multer({ storage });
+
+// @desc    Upload PDF and create print request
+// @route   POST /api/print/upload
+// @access  Private
+router.post('/upload', protect, upload.single('pdf'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: 'raw',
+            format: 'pdf',
+        });
+
+        // Mock cost calculation (e.g., 5 INR per page, assuming 1 page for now as we can't easily count pages without a lib)
+        // In a real app, use a library like 'pdf-parse' to count pages.
+        const pages = req.body.pages || 1;
+        const copies = req.body.copies || 1;
+        const totalCost = pages * copies * 5;
+
+        const printRequest = await PrintRequest.create({
+            userId: req.user._id,
+            pdfUrl: result.secure_url,
+            fileName: req.file.originalname,
+            pages: pages,
+            copies: copies,
+            totalCost: totalCost,
+            paymentStatus: 'pending',
+        });
+
+        res.status(201).json(printRequest);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @desc    Mock Payment
+// @route   POST /api/print/pay
+// @access  Private
+router.post('/pay', protect, async (req, res) => {
+    const { printRequestId } = req.body;
+
+    try {
+        const printRequest = await PrintRequest.findById(printRequestId);
+
+        if (!printRequest) {
+            return res.status(404).json({ message: 'Print request not found' });
+        }
+
+        if (printRequest.paymentStatus === 'paid') {
+            return res.status(400).json({ message: 'Already paid' });
+        }
+
+        // Generate 6-digit print code
+        const printCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        printRequest.paymentStatus = 'paid';
+        printRequest.printCode = printCode;
+        await printRequest.save();
+
+        res.json({
+            message: 'Payment successful',
+            printCode: printCode,
+            printRequest,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+module.exports = router;
