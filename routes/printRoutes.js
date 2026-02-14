@@ -16,6 +16,9 @@ cloudinary.config({
 const storage = multer.diskStorage({});
 const upload = multer({ storage });
 
+const fs = require('fs');
+const pdfParse = require('pdf-parse');
+
 // @desc    Upload PDF and create print request
 // @route   POST /api/print/upload
 // @access  Private
@@ -25,17 +28,19 @@ router.post('/upload', protect, upload.single('pdf'), async (req, res) => {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
+        // Calculate pages using pdf-parse
+        const dataBuffer = fs.readFileSync(req.file.path);
+        const data = await pdfParse(dataBuffer);
+        const pages = data.numpages;
+
         // Upload to Cloudinary
         const result = await cloudinary.uploader.upload(req.file.path, {
             folder: 'print_requests',
             resource_type: 'auto',
         });
 
-        // Mock cost calculation (e.g., 5 INR per page, assuming 1 page for now as we can't easily count pages without a lib)
-        // In a real app, use a library like 'pdf-parse' to count pages.
-        const pages = req.body.pages || 1;
         const copies = req.body.copies || 1;
-        const totalCost = pages * copies * 5;
+        const totalCost = pages * copies * 5; // 5 INR per page
 
         const printRequest = await PrintRequest.create({
             userId: req.user._id,
