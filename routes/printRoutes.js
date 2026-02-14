@@ -17,7 +17,8 @@ const storage = multer.diskStorage({});
 const upload = multer({ storage });
 
 const fs = require('fs');
-const pdfParse = require('pdf-parse');
+const pdfParse = require('pdf-parse/lib/pdf-parse');
+
 
 // @desc    Upload PDF and create print request
 // @route   POST /api/print/upload
@@ -95,3 +96,4 @@ router.post('/pay', protect, async (req, res) => {
 });
 
 module.exports = router;
+
