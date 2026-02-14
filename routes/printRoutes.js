@@ -27,8 +27,8 @@ router.post('/upload', protect, upload.single('pdf'), async (req, res) => {
 
         // Upload to Cloudinary
         const result = await cloudinary.uploader.upload(req.file.path, {
-            resource_type: 'raw',
-            format: 'pdf',
+            folder: 'print_requests',
+            resource_type: 'auto',
         });
 
         // Mock cost calculation (e.g., 5 INR per page, assuming 1 page for now as we can't easily count pages without a lib)
@@ -71,8 +71,8 @@ router.post('/pay', protect, async (req, res) => {
             return res.status(400).json({ message: 'Already paid' });
         }
 
-        // Generate 6-digit print code
-        const printCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // Generate 4-digit print code
+        const printCode = Math.floor(1000 + Math.random() * 9000).toString();
 
         printRequest.paymentStatus = 'paid';
         printRequest.printCode = printCode;
