@@ -12,11 +12,29 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const fs = require('fs');
+const path = require('path');
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+}
+
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/print', require('./routes/printRoutes'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        success: false,
+        message: err.message || 'Server Error'
+    });
 });
 
 const PORT = process.env.PORT || 5000;
